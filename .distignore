@@ -51,3 +51,6 @@ lib/style-handler/style-handler.js
 lib/style-handler/helpers.js
 .wordpress-org
 .idea
+config
+.nvmrc
+compatibility-report.md

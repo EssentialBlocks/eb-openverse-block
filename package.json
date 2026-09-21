@@ -1,6 +1,6 @@
 {
   "name": "eb-openverse-block",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Easily search & use royalty free images, stock photos, CC-licensed images, etc from Openverse for your website",
   "author": "WPDeveloper",
   "license": "GPL-2.0-or-later",
@@ -9,6 +9,9 @@
     "start": "wp-scripts start",
     "build": "wp-scripts build",
     "packages-update": "wp-scripts packages-update"
+  },
+  "engines": {
+    "node": "22.x"
   },
   "devDependencies": {
     "@babel/core": "^7.16.5",
