@@ -88,7 +88,7 @@ class EB_Openverse_Block_Ajax {
             )
         );
 
-        $response_array = get_object_vars( $response );
+        $response_array = is_object( $response ) ? get_object_vars( $response ) : (array) $response;
 
         if ( isset( $response_array['client_id'] ) && isset( $response_array['client_secret'] ) && isset( $response_array['name'] ) ) {
             self::openverse_reg_data_save(
@@ -141,8 +141,8 @@ class EB_Openverse_Block_Ajax {
             wp_send_json_error( "Couldn't found data" );
         }
 
-		$client_id     = $settings['openverseApi']['client_id'];
-		$client_secret = $settings['openverseApi']['client_secret'];
+		$client_id     = $settings['openverseApi']['client_id'] ?? '';
+		$client_secret = $settings['openverseApi']['client_secret'] ?? '';
 
         // Registration for client id and client secret
         $url = 'https://api.openverse.org/v1/auth_tokens/token/';
@@ -164,9 +164,9 @@ class EB_Openverse_Block_Ajax {
             )
         );
 
-        $response_array                  = get_object_vars( $response );
-        $access_token                    = $response_array['access_token'];
-        $access_token_expires_in         = $response_array['expires_in'];
+        $response_array                  = is_object( $response ) ? get_object_vars( $response ) : (array) $response;
+        $access_token                    = $response_array['access_token'] ?? null;
+        $access_token_expires_in         = (int) ( $response_array['expires_in'] ?? 0 );
         $deduct_second_from_expire_token = 60;
 
         $set = set_transient( 'eb_openverse_token', $access_token, $access_token_expires_in - $deduct_second_from_expire_token );
@@ -197,7 +197,7 @@ class EB_Openverse_Block_Ajax {
 
 		if ( empty( $token ) ) {
 			$token_info = self::eb_generate_openverse_token_callback();
-			$token      = $token_info['access_token'];
+			$token      = $token_info['access_token'] ?? null;
 		}
 
         $limit = 12;
@@ -242,6 +242,7 @@ class EB_Openverse_Block_Ajax {
             die( esc_html__( 'Nonce did not match', 'essential-blocks' ) );
         }
 
+        $file = '';
         if ( isset( $_POST['image_url'] ) ) {
             $file = esc_url_raw( $_POST['image_url'] );
         }
@@ -262,7 +263,7 @@ class EB_Openverse_Block_Ajax {
      */
     private static function do_upload( $url, $title = null ) {
 
-		if(!function_exists('download_url') && !function_exists('media_handle_sideload')){
+		if ( ! function_exists( 'download_url' ) || ! function_exists( 'media_handle_sideload' ) ) {
 			return false;
 		}
         // Download url to a temp file
@@ -275,7 +276,7 @@ class EB_Openverse_Block_Ajax {
         $extension = pathinfo( $url, PATHINFO_EXTENSION );
 
         if ( ! $extension ) {
-            $mime = mime_content_type( $tmp );
+            $mime = function_exists( 'mime_content_type' ) ? mime_content_type( $tmp ) : false;
             $mime = is_string( $mime ) ? sanitize_mime_type( $mime ) : false;
 
             $mime_extensions = array(

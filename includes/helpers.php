@@ -47,7 +47,7 @@ class EB_Openverse_Helper
          */
         if ($pagenow == 'post-new.php' || $pagenow == 'post.php' || $pagenow == 'site-editor.php' || ($pagenow == 'themes.php' && !empty($_SERVER['QUERY_STRING']) && str_contains($_SERVER['QUERY_STRING'], 'gutenberg-edit-site'))) {
 
-            $controls_dependencies = include_once EB_OPENVERSE_BLOCK_ADMIN_PATH . '/dist/modules.asset.php';
+            $controls_dependencies = include EB_OPENVERSE_BLOCK_ADMIN_PATH . '/dist/modules.asset.php';
             wp_register_script(
                 "eb-openverse-block-controls-util",
                 EB_OPENVERSE_BLOCK_ADMIN_URL . 'dist/modules.js',
