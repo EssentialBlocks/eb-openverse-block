@@ -90,9 +90,13 @@ Yes, it will work with any standard WordPress theme.
 
 == Changelog ==
 
-= 1.2.1 - 21/09/2026 =
-* Fixed: PHP 8.x compatibility issues
-* Improved: compatibility support with WordPress 7.1 version
+= 1.2.1 - 22/09/2026 =
+* Fixed: PHP 8.0–8.5 compatibility issues
+* Fixed: WordPress version detection
+* Fixed: PHP 7.x compatibility
+* Fixed: Asset loading issues on newer WordPress versions
+* Improved: Asset loading and overall stability
+* Tested up to WordPress 7.1.1
 
 = 1.2.0 - 15/06/2024 =
 * Updated: Openverse API
