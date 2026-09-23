@@ -99,7 +99,7 @@ class EB_Openverse_Blocks_Api {
             $request['headers']['X-API-KEY'] = $apiKey;
         }
         if ( ! empty( $headers ) ) {
-            $request['headers'] = array_merge( $request['headers'], $headers );
+            $request['headers'] = array_merge( $request['headers'] ?? array(), $headers );
         }
         $response = wp_remote_post( $url, $request );
         if ( is_wp_error( $response ) ) {
