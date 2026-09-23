@@ -2,15 +2,23 @@
 /**
  * Plugin Name:     EB Openverse Block
  * Description:     Easily search & use royalty free images, stock photos, CC-licensed images, etc from Openverse for your website.
- * Version:         1.2.0
+ * Version:         1.2.1
  * Author:          WPDeveloper
  * Author URI:      https://wpdeveloper.net
  * License:         GPL-3.0-or-later
  * License URI:     https://www.gnu.org/licenses/gpl-3.0.html
  * Text Domain:     eb-openverse-block
+ * Requires at least: 6.0
+ * Tested up to:    7.1
+ * Requires PHP:    7.4
  *
  * @package         eb-openverse-block
  */
+
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
 
 /**
  * Registers all block assets so that they can be enqueued through the block editor
@@ -22,7 +30,9 @@
 require_once __DIR__ . '/includes/font-loader.php';
 require_once __DIR__ . '/includes/post-meta.php';
 require_once __DIR__ . '/includes/helpers.php';
-require_once __DIR__ . '/lib/style-handler/style-handler.php';
+if ( file_exists( __DIR__ . '/lib/style-handler/style-handler.php' ) ) {
+	require_once __DIR__ . '/lib/style-handler/style-handler.php';
+}
 require_once __DIR__ . '/includes/api-class.php';
 require_once __DIR__ . '/includes/class-openverse-ajax.php';
 /**
@@ -31,9 +41,15 @@ require_once __DIR__ . '/includes/class-openverse-ajax.php';
  * @return void
  */
 function create_block_eb_openverse_block_init() {
-	define( 'EB_OPENVERSE_BLOCK_VERSION', '1.2.0' );
-	define( 'EB_OPENVERSE_BLOCK_ADMIN_URL', plugin_dir_url( __FILE__ ) );
-	define( 'EB_OPENVERSE_BLOCK_ADMIN_PATH', dirname( __FILE__ ) );
+	if ( ! defined( 'EB_OPENVERSE_BLOCK_VERSION' ) ) {
+		define( 'EB_OPENVERSE_BLOCK_VERSION', '1.2.1' );
+	}
+	if ( ! defined( 'EB_OPENVERSE_BLOCK_ADMIN_URL' ) ) {
+		define( 'EB_OPENVERSE_BLOCK_ADMIN_URL', plugin_dir_url( __FILE__ ) );
+	}
+	if ( ! defined( 'EB_OPENVERSE_BLOCK_ADMIN_PATH' ) ) {
+		define( 'EB_OPENVERSE_BLOCK_ADMIN_PATH', dirname( __FILE__ ) );
+	}
 
 	$script_asset_path = EB_OPENVERSE_BLOCK_ADMIN_PATH . '/dist/index.asset.php';
 	if ( ! file_exists( $script_asset_path ) ) {

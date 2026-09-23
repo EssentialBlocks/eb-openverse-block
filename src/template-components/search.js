@@ -49,7 +49,7 @@ export default function Search(props) {
       />
       {!loading && openverseDataCount > 0 && (
         <span className="search-result-count">
-          Over {openverseDataCount} restults
+          Over {openverseDataCount} results
         </span>
       )}
       {loading && openverseDataCount > 0 && (
