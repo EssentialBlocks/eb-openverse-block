@@ -26,7 +26,8 @@ class EB_Openverse_Blocks_Api {
         $url = rtrim( $url, '/' ) . '?';
 
         foreach ( $params as $key => $param ) {
-            $url .= $key . '=' . $param . '&';
+            // Encode each value so user input cannot add parameters of its own.
+            $url .= rawurlencode( (string) $key ) . '=' . rawurlencode( (string) $param ) . '&';
         }
         $url = rtrim( $url, '&' );
         return self::remote_get( $url, $header, $options );
