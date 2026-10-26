@@ -81,6 +81,37 @@ class EB_Openverse_Block_Ajax {
     }
 
     /**
+     * A search filter value from the request: a single slug or a comma
+     * separated list of slugs. Anything else is dropped.
+     *
+     * @param string $field POST field.
+     * @return string
+     */
+    private static function filter_value( $field ) {
+        $value = self::isset_check( $field );
+        if ( ! is_string( $value ) ) {
+            return '';
+        }
+        $value = trim( wp_unslash( $value ) );
+
+        return preg_match( '/^[a-z0-9_,-]+$/i', $value ) ? $value : '';
+    }
+
+    /**
+     * Image types that can be imported into the Media Library.
+     *
+     * @return array
+     */
+    private static function allowed_image_mimes() {
+        return array(
+            'jpg|jpeg|jpe' => 'image/jpeg',
+            'png'          => 'image/png',
+            'gif'          => 'image/gif',
+            'webp'         => 'image/webp',
+        );
+    }
+
+    /**
      * Openverse Registration
      */
     public static function eb_get_openverse_registration() {
@@ -113,7 +144,7 @@ class EB_Openverse_Block_Ajax {
                 )
             ),
             array(
-                'timeout' => 240,
+                'timeout' => 20,
             )
         );
 
@@ -122,10 +153,10 @@ class EB_Openverse_Block_Ajax {
         if ( isset( $response_array['client_id'] ) && isset( $response_array['client_secret'] ) && isset( $response_array['name'] ) ) {
             self::openverse_reg_data_save(
                 array(
-					'client_id'     => $response_array['client_id'],
-					'client_secret' => $response_array['client_secret'],
-					'name'          => $response_array['name'],
-					'email'         => $email,
+					'client_id'     => sanitize_text_field( (string) $response_array['client_id'] ),
+					'client_secret' => sanitize_text_field( (string) $response_array['client_secret'] ),
+					'name'          => sanitize_text_field( (string) $response_array['name'] ),
+					'email'         => sanitize_email( $email ),
                 )
             );
         }
@@ -201,7 +232,7 @@ class EB_Openverse_Block_Ajax {
                 )
             ),
             array(
-                'timeout' => 240,
+                'timeout' => 20,
             )
         );
 
@@ -252,11 +283,11 @@ class EB_Openverse_Block_Ajax {
         $values = array(
 			'page_size'    => $limit,
             'q'            => sanitize_text_field( self::isset_check( 'openverseQ' ) ),
-            'license'      => sanitize_text_field( self::isset_check( 'openverseFilterLicenses' ) ),
-            'categories'   => sanitize_text_field( self::isset_check( 'openverseFilterImgtype' ) ),
-            'size'         => sanitize_text_field( self::isset_check( 'openverseFilterSize' ) ),
-            'extension'    => sanitize_text_field( self::isset_check( 'openverseFilterExtension' ) ),
-            'license_type' => sanitize_text_field( self::isset_check( 'openverseFilterLicensesType' ) ),
+            'license'      => self::filter_value( 'openverseFilterLicenses' ),
+            'categories'   => self::filter_value( 'openverseFilterImgtype' ),
+            'size'         => self::filter_value( 'openverseFilterSize' ),
+            'extension'    => self::filter_value( 'openverseFilterExtension' ),
+            'license_type' => self::filter_value( 'openverseFilterLicensesType' ),
             'page'         => max( 1, absint( self::isset_check( 'openversePage', 1 ) ) ),
         );
 
@@ -272,7 +303,7 @@ class EB_Openverse_Block_Ajax {
                 )
             ),
             array(
-                'timeout' => 240,
+                'timeout' => 20,
             )
         );
         return $response;
@@ -299,7 +330,17 @@ class EB_Openverse_Block_Ajax {
             wp_die();
         }
 
-        $filename = basename( $file );
+        $filename = basename( (string) wp_parse_url( $file, PHP_URL_PATH ) );
+
+        // Only image files can be imported. A URL without an extension is
+        // checked after download, from the file contents.
+        if ( '' !== pathinfo( $filename, PATHINFO_EXTENSION ) ) {
+            $filetype = wp_check_filetype( $filename, self::allowed_image_mimes() );
+            if ( empty( $filetype['type'] ) ) {
+                wp_send_json_error( __( 'Only JPEG, PNG, GIF and WebP images can be imported.', 'eb-openverse-block' ), 400 );
+            }
+        }
+
         try {
             echo esc_url( wp_get_attachment_url( self::do_upload( $file, $filename ) ) );
         } catch ( \Exception $e ) {
@@ -324,8 +365,10 @@ class EB_Openverse_Block_Ajax {
 			return false;
         }
 
-        $filename  = pathinfo( $url, PATHINFO_FILENAME );
-        $extension = pathinfo( $url, PATHINFO_EXTENSION );
+        $mimes     = self::allowed_image_mimes();
+        $path      = (string) wp_parse_url( $url, PHP_URL_PATH );
+        $filename  = pathinfo( $path, PATHINFO_FILENAME );
+        $extension = pathinfo( $path, PATHINFO_EXTENSION );
 
         if ( ! $extension ) {
             $mime = function_exists( 'mime_content_type' ) ? mime_content_type( $tmp ) : false;
@@ -337,6 +380,7 @@ class EB_Openverse_Block_Ajax {
                 'image/jpeg' => 'jpeg',
                 'image/gif'  => 'gif',
                 'image/png'  => 'png',
+                'image/webp' => 'webp',
             );
 
             if ( isset( $mime_extensions[ $mime ] ) ) {
@@ -346,13 +390,32 @@ class EB_Openverse_Block_Ajax {
                 return false;
             }
         }
+        // The downloaded file must really be one of the allowed image types.
+        $checked = wp_check_filetype_and_ext( $tmp, "$filename.$extension", $mimes );
+        if ( empty( $checked['type'] ) || ! isset( array_flip( $mimes )[ $checked['type'] ] ) ) {
+            @unlink( $tmp );
+            return false;
+        }
+        if ( ! empty( $checked['proper_filename'] ) ) {
+            $filename  = pathinfo( $checked['proper_filename'], PATHINFO_FILENAME );
+            $extension = pathinfo( $checked['proper_filename'], PATHINFO_EXTENSION );
+        }
+
         $args = array(
             'name'     => "$filename.$extension",
             'tmp_name' => $tmp,
         );
 
         // Do the upload
-        $attachment_id = media_handle_sideload( $args, 0, $title );
+        $attachment_id = media_handle_sideload(
+            $args,
+            0,
+            $title,
+            array(
+                'test_form' => false,
+                'mimes'     => $mimes,
+            )
+        );
 
         @unlink( $tmp );
 

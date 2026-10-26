@@ -1,5 +1,6 @@
 import { __ } from "@wordpress/i18n";
 import { useBlockProps } from "@wordpress/block-editor";
+import { safeUrl } from "./template-components/safeUrl";
 
 const save = ({ attributes }) => {
   const {
@@ -34,7 +35,7 @@ const save = ({ attributes }) => {
                         <a
                           target="_blank"
                           rel="noopener noreferrer"
-                          href={imageAttr.foreignUrl}
+                          href={safeUrl(imageAttr.foreignUrl)}
                         >
                           {imageAttr.title}
                         </a>
@@ -51,7 +52,7 @@ const save = ({ attributes }) => {
                         <a
                           target="_blank"
                           rel="noopener noreferrer"
-                          href={imageAttr.creatorUrl}
+                          href={safeUrl(imageAttr.creatorUrl)}
                         >
                           {imageAttr.creator}
                         </a>
@@ -68,7 +69,7 @@ const save = ({ attributes }) => {
                           <a
                             target="_blank"
                             rel="noopener noreferrer"
-                            href={imageAttr.licenseUrl}
+                            href={safeUrl(imageAttr.licenseUrl)}
                             className="licensed-wrap"
                           >
                             {imageAttr.license + " " + imageAttr.licenseVersion}

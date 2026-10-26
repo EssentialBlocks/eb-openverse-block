@@ -1,4 +1,5 @@
 import { __ } from "@wordpress/i18n";
+import { safeUrl } from "./safeUrl";
 
 export default function DisplayImage(props) {
   const { attributes } = props;
@@ -19,7 +20,7 @@ export default function DisplayImage(props) {
                   <a
                     target="_blank"
                     rel="noopener noreferrer"
-                    href={imageAttr.foreignUrl}
+                    href={safeUrl(imageAttr.foreignUrl)}
                   >
                     {imageAttr.title}
                   </a>
@@ -36,7 +37,7 @@ export default function DisplayImage(props) {
                   <a
                     target="_blank"
                     rel="noopener noreferrer"
-                    href={imageAttr.creatorUrl}
+                    href={safeUrl(imageAttr.creatorUrl)}
                   >
                     {imageAttr.creator}
                   </a>
@@ -53,7 +54,7 @@ export default function DisplayImage(props) {
                     <a
                       target="_blank"
                       rel="noopener noreferrer"
-                      href={imageAttr.licenseUrl}
+                      href={safeUrl(imageAttr.licenseUrl)}
                       className="licensed-wrap"
                     >
                       {imageAttr.license + " " + imageAttr.licenseVersion}
