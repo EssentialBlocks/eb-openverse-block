@@ -29,3 +29,5 @@ node_modules/
 
 index.js.map
 yarn.lock
+# Source maps expose the private controls source
+*.map
