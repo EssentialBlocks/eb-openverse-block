@@ -112,12 +112,9 @@ Yes, it will work with any standard WordPress theme.
 
 == Changelog ==
 
-= 1.2.2 - 19/10/2026 =
-* Security: Hardened Openverse requests and block style generation
-* Fixed: Animation stylesheet replaced with animate.css 3.7.2 (MIT licence)
-* Removed: Unused `_eb_attr` post meta registration
-* Improved: Release package no longer includes source maps or the unused frontend helper script
-* Added: External services section documenting Openverse and Google Fonts
+= 1.2.2 - 26/10/2026 =
+* Improved: Security enhancements
+* Few minor bug fixes & improvements
 
 = 1.2.1 - 23/09/2026 =
 * Fixed: PHP 8.0–8.5 compatibility issues
