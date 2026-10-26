@@ -50,19 +50,79 @@ class EB_Openverse_Block_Ajax {
 			 'openverse_email_name_DB' => 'openverse_email_name_DB_callback',
 		 );
 
+		 // Logged-in users only: these actions read the stored Openverse
+		 // credentials, write site settings and add files to the Media Library.
 		 foreach ( $ajax_events as $ajax_event_key => $ajax_event_func ) {
 			 add_action( 'wp_ajax_' . $ajax_event_key, array( __CLASS__, $ajax_event_func ) );
-			 add_action( 'wp_ajax_nopriv_' . $ajax_event_key, array( __CLASS__, $ajax_event_func ) );
 		 }
+    }
+
+    /**
+     * Stop unless the request carries a valid nonce for $action.
+     *
+     * @param string $field  POST field holding the nonce.
+     * @param string $action Nonce action.
+     */
+    private static function verify_nonce( $field, $action ) {
+        if ( ! isset( $_POST[ $field ] ) || ! wp_verify_nonce( sanitize_key( wp_unslash( $_POST[ $field ] ) ), $action ) ) {
+            wp_send_json_error( __( 'Nonce did not match', 'eb-openverse-block' ), 403 );
+        }
+    }
+
+    /**
+     * Stop unless the current user has $capability.
+     *
+     * @param string $capability Capability.
+     */
+    private static function require_capability( $capability ) {
+        if ( ! current_user_can( $capability ) ) {
+            wp_send_json_error( __( 'You are not allowed to do this.', 'eb-openverse-block' ), 403 );
+        }
+    }
+
+    /**
+     * A search filter value from the request: a single slug or a comma
+     * separated list of slugs. Anything else is dropped.
+     *
+     * @param string $field POST field.
+     * @return string
+     */
+    private static function filter_value( $field ) {
+        $value = self::isset_check( $field );
+        if ( ! is_string( $value ) ) {
+            return '';
+        }
+        $value = trim( wp_unslash( $value ) );
+
+        return preg_match( '/^[a-z0-9_,-]+$/i', $value ) ? $value : '';
+    }
+
+    /**
+     * Image types that can be imported into the Media Library.
+     *
+     * @return array
+     */
+    private static function allowed_image_mimes() {
+        return array(
+            'jpg|jpeg|jpe' => 'image/jpeg',
+            'png'          => 'image/png',
+            'gif'          => 'image/gif',
+            'webp'         => 'image/webp',
+        );
     }
 
     /**
      * Openverse Registration
      */
     public static function eb_get_openverse_registration() {
-		if ( isset( $_POST['openverse_reg_nonce'] ) && ! wp_verify_nonce( sanitize_key( $_POST['openverse_reg_nonce'] ), 'eb-openverse-reg-nonce' ) ) {
-            die( esc_html__( 'Nonce did not match', 'essential-blocks' ) );
-		}
+        self::verify_nonce( 'openverse_reg_nonce', 'eb-openverse-reg-nonce' );
+        if ( ! current_user_can( 'manage_options' ) ) {
+            // The editor shows `name[0]` from a failed registration.
+            wp_send_json(
+                array( 'name' => array( __( 'Only an administrator can connect this site to Openverse.', 'eb-openverse-block' ) ) ),
+                403
+            );
+        }
 
         $name  = sanitize_text_field( self::isset_check( 'openverseName' ) );
         $email = sanitize_email( self::isset_check( 'openverseEmail' ) );
@@ -84,7 +144,7 @@ class EB_Openverse_Block_Ajax {
                 )
             ),
             array(
-                'timeout' => 240,
+                'timeout' => 20,
             )
         );
 
@@ -93,31 +153,43 @@ class EB_Openverse_Block_Ajax {
         if ( isset( $response_array['client_id'] ) && isset( $response_array['client_secret'] ) && isset( $response_array['name'] ) ) {
             self::openverse_reg_data_save(
                 array(
-					'client_id'     => $response_array['client_id'],
-					'client_secret' => $response_array['client_secret'],
-					'name'          => $response_array['name'],
-					'email'         => $email,
+					'client_id'     => sanitize_text_field( (string) $response_array['client_id'] ),
+					'client_secret' => sanitize_text_field( (string) $response_array['client_secret'] ),
+					'name'          => sanitize_text_field( (string) $response_array['name'] ),
+					'email'         => sanitize_email( $email ),
                 )
             );
         }
 
-        wp_send_json( $response );
+        // The client secret is stored server side and never sent to the browser.
+        if ( is_array( $response_array ) ) {
+            unset( $response_array['client_secret'] );
+        }
+
+        wp_send_json( $response_array );
     }
 
     /**
-     * Openverse Registration
+     * Whether this site is registered with Openverse, plus the name and email
+     * the registration form starts from.
      */
     public static function openverse_email_name_DB_callback() {
-		if ( isset( $_POST['openverse_nonce'] ) && ! wp_verify_nonce( sanitize_key( $_POST['openverse_nonce'] ), 'eb-openverse-nonce' ) ) {
-            die( esc_html__( 'Nonce did not match', 'essential-blocks' ) );
-		}
+        self::verify_nonce( 'openverse_nonce', 'eb-openverse-nonce' );
+        self::require_capability( 'edit_posts' );
 
         $settings    = get_option( 'eb_settings' );
-        $admin_email = get_bloginfo( 'admin_email' );
+        $admin_email = current_user_can( 'manage_options' ) ? get_bloginfo( 'admin_email' ) : '';
         $site_name   = get_bloginfo( 'name' );
 
-		if ( is_array( $settings ) && isset( $settings['openverseApi'] ) ) {
-			wp_send_json_success( $settings['openverseApi'] );
+		if ( is_array( $settings ) && ! empty( $settings['openverseApi']['client_id'] ) ) {
+			// The editor only checks that `client_id` is set; the credentials stay on the server.
+			wp_send_json_success(
+				array(
+					'client_id' => true,
+					'name'      => $settings['openverseApi']['name'] ?? '',
+					'email'     => current_user_can( 'manage_options' ) ? ( $settings['openverseApi']['email'] ?? '' ) : '',
+				)
+			);
 		} elseif ( ! empty( $admin_email ) || ! empty( $site_name ) ) {
 			$site_info = array(
 				'email' => $admin_email,
@@ -137,7 +209,7 @@ class EB_Openverse_Block_Ajax {
         // get client idd ... from db
         $settings = get_option( 'eb_settings' );
 
-        if ( ! is_array( $settings ) && ! isset( $settings['openverseApi'] ) ) {
+        if ( ! is_array( $settings ) || ! isset( $settings['openverseApi'] ) ) {
             wp_send_json_error( "Couldn't found data" );
         }
 
@@ -160,7 +232,7 @@ class EB_Openverse_Block_Ajax {
                 )
             ),
             array(
-                'timeout' => 240,
+                'timeout' => 20,
             )
         );
 
@@ -178,19 +250,22 @@ class EB_Openverse_Block_Ajax {
      * Openverse Token
      */
     public static function eb_generate_openverse_token() {
+        self::verify_nonce( 'openverse_auth_nonce', 'eb-openverse-auth-nonce' );
+        self::require_capability( 'manage_options' );
+
         $response = self::eb_generate_openverse_token_callback();
 
+        // The token is cached server side; the editor only needs to know it worked.
+        unset( $response['access_token'] );
         wp_send_json( $response );
-
     }
 
     /**
      * API Call to Get Data
      */
     public static function eb_get_openverse_collections() {
-        if ( isset( $_POST['openverse_nonce'] ) && ! wp_verify_nonce( sanitize_key( $_POST['openverse_nonce'] ), 'eb-openverse-nonce' ) ) {
-            die( esc_html__( 'Nonce did not match', 'essential-blocks' ) );
-		}
+        self::verify_nonce( 'openverse_nonce', 'eb-openverse-nonce' );
+        self::require_capability( 'edit_posts' );
 
         // Fetching the token and check the expire time
         $token = get_transient( 'eb_openverse_token' );
@@ -206,14 +281,14 @@ class EB_Openverse_Block_Ajax {
         $param = array();
 
         $values = array(
-			'page_size'    => self::isset_check( $limit ),
+			'page_size'    => $limit,
             'q'            => sanitize_text_field( self::isset_check( 'openverseQ' ) ),
-            'license'      => sanitize_text_field( self::isset_check( 'openverseFilterLicenses' ) ),
-            'categories'   => sanitize_text_field( self::isset_check( 'openverseFilterImgtype' ) ),
-            'size'         => sanitize_text_field( self::isset_check( 'openverseFilterSize' ) ),
-            'extension'    => sanitize_text_field( self::isset_check( 'openverseFilterExtension' ) ),
-            'license_type' => sanitize_text_field( self::isset_check( 'openverseFilterLicensesType' ) ),
-            'page'         => sanitize_text_field( self::isset_check( 'openversePage', 1 ) ),
+            'license'      => self::filter_value( 'openverseFilterLicenses' ),
+            'categories'   => self::filter_value( 'openverseFilterImgtype' ),
+            'size'         => self::filter_value( 'openverseFilterSize' ),
+            'extension'    => self::filter_value( 'openverseFilterExtension' ),
+            'license_type' => self::filter_value( 'openverseFilterLicensesType' ),
+            'page'         => max( 1, absint( self::isset_check( 'openversePage', 1 ) ) ),
         );
 
         $param = array_merge( $param, $values );
@@ -228,7 +303,7 @@ class EB_Openverse_Block_Ajax {
                 )
             ),
             array(
-                'timeout' => 240,
+                'timeout' => 20,
             )
         );
         return $response;
@@ -238,16 +313,34 @@ class EB_Openverse_Block_Ajax {
      * Upload selected item to media
      */
     public static function eb_get_openverse_item() {
-        if ( isset( $_POST['openverse_item_nonce'] ) && ! wp_verify_nonce( sanitize_key( $_POST['openverse_item_nonce'] ), 'eb-openverse-item-nonce' ) ) {
-            die( esc_html__( 'Nonce did not match', 'essential-blocks' ) );
-        }
+        self::verify_nonce( 'openverse_item_nonce', 'eb-openverse-item-nonce' );
+        self::require_capability( 'edit_posts' );
 
         $file = '';
         if ( isset( $_POST['image_url'] ) ) {
-            $file = esc_url_raw( $_POST['image_url'] );
+            $file = esc_url_raw( wp_unslash( $_POST['image_url'] ), array( 'http', 'https' ) );
+        }
+        if ( '' === $file ) {
+            wp_die();
         }
 
-        $filename = basename( $file );
+        // Without upload_files the block keeps using the remote image.
+        if ( ! current_user_can( 'upload_files' ) ) {
+            echo esc_url( $file );
+            wp_die();
+        }
+
+        $filename = basename( (string) wp_parse_url( $file, PHP_URL_PATH ) );
+
+        // Only image files can be imported. A URL without an extension is
+        // checked after download, from the file contents.
+        if ( '' !== pathinfo( $filename, PATHINFO_EXTENSION ) ) {
+            $filetype = wp_check_filetype( $filename, self::allowed_image_mimes() );
+            if ( empty( $filetype['type'] ) ) {
+                wp_send_json_error( __( 'Only JPEG, PNG, GIF and WebP images can be imported.', 'eb-openverse-block' ), 400 );
+            }
+        }
+
         try {
             echo esc_url( wp_get_attachment_url( self::do_upload( $file, $filename ) ) );
         } catch ( \Exception $e ) {
@@ -272,8 +365,10 @@ class EB_Openverse_Block_Ajax {
 			return false;
         }
 
-        $filename  = pathinfo( $url, PATHINFO_FILENAME );
-        $extension = pathinfo( $url, PATHINFO_EXTENSION );
+        $mimes     = self::allowed_image_mimes();
+        $path      = (string) wp_parse_url( $url, PHP_URL_PATH );
+        $filename  = pathinfo( $path, PATHINFO_FILENAME );
+        $extension = pathinfo( $path, PATHINFO_EXTENSION );
 
         if ( ! $extension ) {
             $mime = function_exists( 'mime_content_type' ) ? mime_content_type( $tmp ) : false;
@@ -285,6 +380,7 @@ class EB_Openverse_Block_Ajax {
                 'image/jpeg' => 'jpeg',
                 'image/gif'  => 'gif',
                 'image/png'  => 'png',
+                'image/webp' => 'webp',
             );
 
             if ( isset( $mime_extensions[ $mime ] ) ) {
@@ -294,13 +390,32 @@ class EB_Openverse_Block_Ajax {
                 return false;
             }
         }
+        // The downloaded file must really be one of the allowed image types.
+        $checked = wp_check_filetype_and_ext( $tmp, "$filename.$extension", $mimes );
+        if ( empty( $checked['type'] ) || ! isset( array_flip( $mimes )[ $checked['type'] ] ) ) {
+            @unlink( $tmp );
+            return false;
+        }
+        if ( ! empty( $checked['proper_filename'] ) ) {
+            $filename  = pathinfo( $checked['proper_filename'], PATHINFO_FILENAME );
+            $extension = pathinfo( $checked['proper_filename'], PATHINFO_EXTENSION );
+        }
+
         $args = array(
             'name'     => "$filename.$extension",
             'tmp_name' => $tmp,
         );
 
         // Do the upload
-        $attachment_id = media_handle_sideload( $args, 0, $title );
+        $attachment_id = media_handle_sideload(
+            $args,
+            0,
+            $title,
+            array(
+                'test_form' => false,
+                'mimes'     => $mimes,
+            )
+        );
 
         @unlink( $tmp );
 

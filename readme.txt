@@ -4,7 +4,7 @@ Tags: Free images, openverse, stock photos, image block, images, photos, Gutenbe
 Requires at least: 6.0
 Requires PHP: 7.4
 Tested up to: 7.1
-Stable tag: 1.2.1
+Stable tag: 1.2.2
 License: GPLv3 or later
 License URI: http://www.gnu.org/licenses/gpl-3.0.html
 
@@ -69,6 +69,28 @@ Consider checking out our other WordPress solutions & boost your WordPress websi
 ⚡ [Flexia](http://wordpress.org/plugins/flexia): Most lightweight, customizable & multipurpose theme for WordPress
 
 
+== External services ==
+
+= Openverse =
+
+This plugin connects to the Openverse API (api.openverse.org), a WordPress.org project, to search openly licensed images and add them to your site. It is only contacted from the block editor, never from the front end of your site.
+
+* Registration: when an administrator connects the site, the name and email address entered in the block are sent to Openverse to create API credentials. Openverse returns a client ID and secret, which are stored in this site's options.
+* Access token: the stored client ID and secret are sent to Openverse to get a short-lived access token.
+* Search: the search term and the selected filters (licence, type, size, extension, page) are sent to Openverse with that token.
+* Importing an image: the chosen image is downloaded from the address Openverse returns, which is usually the original provider's site, and saved to the Media Library.
+
+Openverse: [Terms of Service](https://docs.openverse.org/terms_of_service.html), [Privacy Policy](https://wordpress.org/about/privacy/).
+
+= Google Fonts =
+
+This plugin connects to Google Fonts to load the fonts you pick in an EB Openverse block's typography settings.
+
+* When data is sent: on every front-end page that contains an EB Openverse block whose typography uses any font family other than Default or a system font (Arial, Tahoma, Verdana, Helvetica, Times New Roman, Trebuchet MS, Georgia).
+* What is sent: the visitor's browser requests the stylesheet from fonts.googleapis.com and the font files from fonts.gstatic.com, so Google receives the visitor's IP address, user agent and the referring page, together with the requested font family names.
+
+Google: [Terms of Service](https://policies.google.com/terms), [Privacy Policy](https://policies.google.com/privacy).
+
 == Installation ==
 
 = Modern Way: =
@@ -89,6 +111,13 @@ Consider checking out our other WordPress solutions & boost your WordPress websi
 Yes, it will work with any standard WordPress theme.
 
 == Changelog ==
+
+= 1.2.2 - 19/10/2026 =
+* Security: Hardened Openverse requests and block style generation
+* Fixed: Animation stylesheet replaced with animate.css 3.7.2 (MIT licence)
+* Removed: Unused `_eb_attr` post meta registration
+* Improved: Release package no longer includes source maps or the unused frontend helper script
+* Added: External services section documenting Openverse and Google Fonts
 
 = 1.2.1 - 23/09/2026 =
 * Fixed: PHP 8.0–8.5 compatibility issues

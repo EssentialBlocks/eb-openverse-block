@@ -1,5 +1,6 @@
 import { __ } from "@wordpress/i18n";
 import { useState } from "@wordpress/element";
+import { safeUrl } from "./safeUrl";
 
 import Items from "./items";
 import Loading from "./loading";
@@ -201,17 +202,22 @@ export default function SeachModal(props) {
         method: "POST",
         body: data,
       }) // wrapped
-        .then((res) => res.text())
+        .then((res) => {
+          if (!res.ok) {
+            throw new Error(res.statusText);
+          }
+          return res.text();
+        })
         .then((data) => {
           setAttributes({
             imageurl: data,
             imageAttr: {
               title: selectItem.title,
-              foreignUrl: selectItem.foreign_landing_url,
+              foreignUrl: safeUrl(selectItem.foreign_landing_url) || "",
               creator: selectItem.creator,
-              creatorUrl: selectItem.creator_url,
+              creatorUrl: safeUrl(selectItem.creator_url) || "",
               license: selectItem.license,
-              licenseUrl: selectItem.license_url,
+              licenseUrl: safeUrl(selectItem.license_url) || "",
               licenseVersion: selectItem.license_version,
             },
           });
