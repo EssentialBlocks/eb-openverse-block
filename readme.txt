@@ -112,6 +112,15 @@ Yes, it will work with any standard WordPress theme.
 
 == Changelog ==
 
+= 1.2.3 - 02/11/2026 =
+* Improved: Security enhancements
+* Fixed: Openverse search conflicting with the Essential Blocks Openverse block
+* Fixed: Existing Openverse blocks stopped working on the front end when Essential Blocks is active
+* Fixed: Editor sidebar controls conflicting with Essential Blocks' styles
+* Fixed: Animated blocks appeared without playing their animation when Essential Blocks is active
+* Fixed: Entrance animations not previewing in the block editor
+* Fixed: Chrome console warning about a deprecated DOM event
+
 = 1.2.2 - 26/10/2026 =
 * Improved: Security enhancements
 * Few minor bug fixes & improvements
