@@ -52,9 +52,30 @@ class EB_Openverse_Block_Ajax {
 
 		 // Logged-in users only: these actions read the stored Openverse
 		 // credentials, write site settings and add files to the Media Library.
+		 //
+		 // Essential Blocks hooks the same actions, so these run first (priority 9)
+		 // and step aside for its requests, which carry only its own nonce.
 		 foreach ( $ajax_events as $ajax_event_key => $ajax_event_func ) {
-			 add_action( 'wp_ajax_' . $ajax_event_key, array( __CLASS__, $ajax_event_func ) );
+			 add_action(
+				 'wp_ajax_' . $ajax_event_key,
+				 static function () use ( $ajax_event_func ) {
+					 if ( ! self::is_essential_blocks_request() ) {
+						 call_user_func( array( __CLASS__, $ajax_event_func ) );
+					 }
+				 },
+				 9
+			 );
 		 }
+    }
+
+    /**
+     * Whether this AJAX request came from Essential Blocks' own Openverse block.
+     *
+     * @return bool
+     */
+    private static function is_essential_blocks_request() {
+        // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Only routes the request; the handler verifies it.
+        return defined( 'ESSENTIAL_BLOCKS_VERSION' ) && isset( $_POST['admin_nonce'] );
     }
 
     /**

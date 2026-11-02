@@ -144,21 +144,45 @@ function create_block_eb_openverse_block_init() {
 		EB_OPENVERSE_BLOCK_VERSION
 	);
 
-	if ( ! WP_Block_Type_Registry::get_instance()->is_registered( 'essential-blocks/openverse' ) ) {
-		register_block_type(
-			EB_Openverse_Helper::get_block_register_path( 'eb-openverse-block/eb-openverse-block', EB_OPENVERSE_BLOCK_ADMIN_PATH ),
-			array(
-				'editor_script'   => 'create-block-eb-openverse-block-editor-script',
-				'editor_style'    => 'create-block-eb-openverse-block-editor-style',
-				'render_callback' => function ( $attributes, $content ) {
-					if ( ! is_admin() ) {
-						wp_enqueue_style( 'create-block-eb-openverse-block-frontend-style' );
-						wp_enqueue_script( 'essential-blocks-eb-animation' );
-					}
-					return $content;
-				},
-			)
-		);
+	$eb_has_block = WP_Block_Type_Registry::get_instance()->is_registered( 'essential-blocks/openverse' );
+	$block_args   = array(
+		'editor_script'   => 'create-block-eb-openverse-block-editor-script',
+		'editor_style'    => 'create-block-eb-openverse-block-editor-style',
+		'render_callback' => function ( $attributes, $content ) {
+			if ( ! is_admin() ) {
+				wp_enqueue_style( 'create-block-eb-openverse-block-frontend-style' );
+				wp_enqueue_script( 'essential-blocks-eb-animation' );
+			}
+			return $content;
+		},
+	);
+
+	// Essential Blocks has its own version of this block under another name. Posts saved
+	// with this one still need its render callback and front-end assets, so keep it
+	// registered, but leave out the editor bundle, which can't run beside Essential Blocks.
+	if ( $eb_has_block ) {
+		unset( $block_args['editor_script'], $block_args['editor_style'] );
 	}
+
+	register_block_type(
+		EB_Openverse_Helper::get_block_register_path( 'eb-openverse-block/eb-openverse-block', EB_OPENVERSE_BLOCK_ADMIN_PATH ),
+		$block_args
+	);
 }
 add_action( 'init', 'create_block_eb_openverse_block_init', 99 );
+
+/**
+ * Let Essential Blocks' animation assets win on the front end when it is active.
+ *
+ * Both plugins register these handles and the first registration wins. This
+ * plugin's loader doesn't set `window.ebAnimationLoaded`, so Essential Blocks'
+ * failsafe would reveal every animated block without playing it. Essential Blocks
+ * registers its own at priority 20 and handles the same `.eb___animated` classes.
+ */
+function eb_openverse_block_use_essential_blocks_animation() {
+    if ( defined( 'ESSENTIAL_BLOCKS_VERSION' ) ) {
+        wp_deregister_script( 'essential-blocks-eb-animation' );
+        wp_deregister_style( 'essential-blocks-animation' );
+    }
+}
+add_action( 'wp_enqueue_scripts', 'eb_openverse_block_use_essential_blocks_animation', 19 );
