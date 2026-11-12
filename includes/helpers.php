@@ -80,7 +80,7 @@ class EB_Openverse_Helper
             }
 
             wp_enqueue_style(
-                'essential-blocks-editor-css',
+                'eb-openverse-block-controls-css',
                 EB_OPENVERSE_BLOCK_ADMIN_URL . 'dist/modules.css',
                 array(),
                 $controls_dependencies['version'],
