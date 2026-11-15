@@ -1,7 +1,10 @@
 /**
  * WordPress dependencies
  */
-import { render, useEffect, useState } from "@wordpress/element";
+import { render, useEffect, useState, useRef } from "@wordpress/element";
+import { useRegistry } from "@wordpress/data";
+import { useBlockEditContext } from "@wordpress/block-editor";
+import { queueGeneratedStyles } from "../controls/src/helpers/generatedStylesSync";
 
 import {
   WRAPPER_BG,
@@ -30,6 +33,11 @@ const {
 
 export default function Style(props) {
   const { attributes, setAttributes } = props;
+  const registry = useRegistry();
+  const { clientId } = useBlockEditContext();
+  // The first sync after mount is not persistent, so opening a post does
+  // not mark it as changed.
+  const isMountSync = useRef(true);
 
   const {
     resOption,
@@ -537,8 +545,13 @@ export default function Style(props) {
       mobile: mobileAllStyles,
     };
     if (JSON.stringify(blockMeta) != JSON.stringify(styleObject)) {
-      setAttributes({ blockMeta: styleObject });
+      if (isMountSync.current) {
+        queueGeneratedStyles(registry, clientId, { blockMeta: styleObject }, setAttributes);
+      } else {
+        setAttributes({ blockMeta: styleObject });
+      }
     }
+    isMountSync.current = false;
   }, [attributes]);
 
   return (
