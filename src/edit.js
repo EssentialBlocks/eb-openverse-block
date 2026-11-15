@@ -27,7 +27,12 @@ import DisplayImage from "./template-components/displayImage";
 import Search from "./template-components/search";
 import { OpenverseMainIcon } from "./template-components/icons/openverseMainIcon";
 import { ApiInfo } from "./template-components/apiInfo";
-import { isEmpty } from "lodash";
+import { isEmpty, isEqual } from "lodash";
+
+// Saved attributes come back from JSON, so compare through JSON too: keys holding
+// `undefined` drop out and a freshly built but equal value counts as unchanged.
+const isSameData = (next, current) =>
+  isEqual(JSON.parse(JSON.stringify(next ?? null)), current ?? null);
 
 export default function Edit(props) {
   const { attributes, setAttributes, className, clientId, isSelected } = props;
@@ -126,13 +131,16 @@ export default function Edit(props) {
           } else {
             setShowForm(true);
           }
-          setAttributes({
-            apiInfo: {
-              ...apiInfo,
-              email: response.data.email,
-              name: response.data.name,
-            },
-          });
+          const nextApiInfo = {
+            ...apiInfo,
+            email: response.data.email,
+            name: response.data.name,
+          };
+          // Runs on every load; only write when the stored details actually changed,
+          // otherwise the fresh object alone marks the post dirty.
+          if (!isSameData(nextApiInfo, apiInfo)) {
+            setAttributes({ apiInfo: nextApiInfo });
+          }
           setLoadingApi(false);
         }
       })
